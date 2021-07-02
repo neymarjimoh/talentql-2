@@ -108,6 +108,110 @@ class Utils {
     return cardType;
   }
 
+  validateCVV(data) {
+    const { cvv } = data;
+    let isCardCvvValid = true;
+    let invalidCardCvvMessage = [];
+    if (!cvv) {
+      isCardCvvValid = false;
+      invalidCardCvvMessage.push("cvv is required");
+    }
+    // regex for valid cvv, accepts number between 0 and 9 and length of 3 or 4
+    const cvvRegex = /^[0-9]{3,4}$/;
+    if (!cvvRegex.test(String(cvv))) {
+      isCardCvvValid = false;
+      invalidCardCvvMessage.push("cvv is invalid");
+    }
+    return { isCardCvvValid, invalidCardCvvMessage };
+  }
+
+  validateMonth(data) {
+    const { exp_year, exp_month } = data;
+    let isMonthValid = true;
+    const errorMsg = [];
+    const value = String(exp_month);
+    if (!value) {
+      isMonthValid = false;
+      errorMsg.push("expiry month is required");
+    }
+    if (!(value.length === 2)) {
+      isMonthValid = false;
+      errorMsg.push(
+        `Expiry month can not be more than two characters. e.g ${`10`}, ${`05`}, ${`06`}`
+      );
+    }
+    if (!/^[0-9]*$/.test(value)) {
+      isMonthValid = false;
+      errorMsg.push("Expiry month can only contain numbers");
+    }
+    const exp_month_int = parseInt(value, 10);
+    const exp_year_int = parseInt(exp_year, 10);
+    const month = new Date().getMonth() + 1;
+    const year = new Date().getFullYear();
+
+    if (
+      exp_month_int < 0 ||
+      exp_month_int > 12 ||
+      exp_month_int < month ||
+      (exp_month_int === month && exp_year_int <= year)
+    ) {
+      isMonthValid = false;
+      errorMsg.push("Expired card");
+    }
+
+    return { isMonthValid, errorMsg };
+  }
+
+  validateYear(data) {
+    const { exp_year, exp_month } = data;
+    let isYearValid = true;
+    let yearErrorMsg = [];
+    const value = String(exp_year);
+    if (!value) {
+      isYearValid = false;
+      yearErrorMsg.push("expiry year is required");
+    }
+    if (!(value.length === 4)) {
+      isYearValid = false;
+      yearErrorMsg.push(
+        `Expiry year can contain only 4 characters. e.g ${`2023`}, ${`2025`} `
+      );
+    }
+    if (!/^[0-9]*$/.test(value)) {
+      isYearValid = false;
+      yearErrorMsg.push("Expiry year can only contain numbers");
+    }
+    const exp_year_int = parseInt(value, 10);
+    const exp_month_int = parseInt(exp_month, 10);
+    const month = new Date().getMonth() + 1;
+    const year = new Date().getFullYear();
+
+    if (
+      exp_year_int < year ||
+      (exp_year_int === year && exp_month_int <= month)
+    ) {
+      isYearValid = false;
+      yearErrorMsg.push("Expired card");
+    }
+    return { isYearValid, yearErrorMsg };
+  }
+
+  validateMail(data) {
+    let isValidMail = true;
+    const invalidMailMsg = [];
+    const { email } = data;
+    if (!email) {
+      isValidMail = false;
+      invalidMailMsg.push("Email is required");
+    }
+    if (!/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
+      isValidMail = false;
+      invalidMailMsg.push("Email is invalid");
+    }
+
+    return { isValidMail, invalidMailMsg };
+  }
+
   validateCard(data) {
     let isCardValid = true;
     const errorFields = [];
@@ -119,8 +223,41 @@ class Utils {
       isCardValid = false;
       errorFields.push({ card_number: invalidCardNumberMessage });
     }
+
+    // card cvv validation
+    const { isCardCvvValid, invalidCardCvvMessage } = this.validateCVV(data);
+    if (!isCardCvvValid) {
+      isCardValid = false;
+      errorFields.push({ cvv: invalidCardCvvMessage });
+    }
+
+    // card expiry month vaidation
+    const { isMonthValid, errorMsg } = this.validateMonth(data);
+    if (!isMonthValid) {
+      isCardValid = false;
+      errorFields.push({ exp_month: errorMsg });
+    }
+
+    // card expiry year validation
+    const { isYearValid, yearErrorMsg } = this.validateYear(data);
+    if (!isYearValid) {
+      isCardValid = false;
+      errorFields.push({ exp_year: yearErrorMsg });
+    }
+
+    // email validation
+    const { isValidMail, invalidMailMsg } = this.validateMail(data);
+    if (!isValidMail) {
+      isCardValid = false;
+      errorFields.push({ email: invalidMailMsg });
+    }
+
     newData["card_number"] = this.formatcardNumber(data.card_number);
-    newData["card-type"] = this.getCardType(data.card_number);
+    newData["card_type"] = this.getCardType(data.card_number);
+    newData["cvv"] = data.cvv;
+    newData["card_exp_date"] = data.exp_month + "/" + data.exp_year.slice(2);
+    newData["email"] = data.email;
+
     return { isCardValid, errorFields, newData: isCardValid ? newData : "" };
   }
 }
