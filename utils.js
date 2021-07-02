@@ -49,6 +49,24 @@ class Utils {
     return formatNumber;
   }
 
+  sanitizePhoneNumber(phone) {
+    const COUNTRY_CODE = "234";
+
+    phone = String(phone);
+    if (phone.startsWith("0")) {
+      phone = phone.substring(1);
+    }
+
+    if (phone.startsWith("+")) {
+      phone = phone.substring(4);
+    }
+
+    if (phone.startsWith(COUNTRY_CODE)) {
+      phone = phone.substring(3);
+    }
+    return `+${COUNTRY_CODE}${phone}`;
+  }
+
   luhn(number) {
     let numberArray = number.split("").reverse();
     for (let i = 0; i < numberArray.length; i++) {
@@ -212,6 +230,59 @@ class Utils {
     return { isValidMail, invalidMailMsg };
   }
 
+  verifyPhoneNumber(phoneNumber, countryCode) {
+    let isPhoneValid = false;
+    switch (countryCode) {
+      case "NG":
+        isPhoneValid =
+          /^([0]{1}|\+?[234]{3})([7-9]{1})([0|1]{1})([\d]{1})([\d]{7})$/g.test(
+            String(phoneNumber)
+          ); // can accept 09070822819, 2349070822819, +2349070822819..
+        break;
+      case "ng":
+        isPhoneValid =
+          /^([0]{1}|\+?[234]{3})([7-9]{1})([0|1]{1})([\d]{1})([\d]{7})$/g.test(
+            String(phoneNumber)
+          ); // can accept 09070822819, 2349070822819, +2349070822819..
+        break;
+      default:
+        break;
+    }
+    return isPhoneValid;
+  }
+
+  validateMobileNumber(data) {
+    let isPhoneValid = true;
+    const invalidPhoneMsg = [];
+    const { mobile_number } = data;
+    if (!mobile_number) {
+      isPhoneValid = false;
+      invalidPhoneMsg.push("Mobile number is required");
+    }
+    if (!this.verifyPhoneNumber(mobile_number, "NG")) {
+      isPhoneValid = false;
+      invalidPhoneMsg.push("Mobile number is invalid");
+    }
+    return { isPhoneValid, invalidPhoneMsg };
+  }
+
+  validateAmount(data) {
+    const { amount } = data;
+    let isAmountValid = true;
+    const invalidAmountMsg = [];
+    if (!amount) {
+      isAmountValid = false;
+      invalidAmountMsg.push("Amount is required");
+    }
+    if (!/^[0-9]+(\.[0-9]{1,2})?$/.test(amount)) {
+      isAmountValid = false;
+      invalidAmountMsg.push(
+        `Amount can only be in format ${`120`}, ${`120.00`}`
+      );
+    }
+    return { isAmountValid, invalidAmountMsg };
+  }
+
   validateCard(data) {
     let isCardValid = true;
     const errorFields = [];
@@ -252,13 +323,35 @@ class Utils {
       errorFields.push({ email: invalidMailMsg });
     }
 
+    // mobile validation
+    const { isPhoneValid, invalidPhoneMsg } = this.validateMobileNumber(data);
+    if (!isPhoneValid) {
+      isCardValid = false;
+      errorFields.push({ mobile_number: invalidPhoneMsg });
+    }
+
+    // amount validation
+    const { isAmountValid, invalidAmountMsg } = this.validateAmount(data);
+    if (!isAmountValid) {
+      isCardValid = false;
+      errorFields.push({ amount: invalidAmountMsg });
+    }
+
     newData["card_number"] = this.formatcardNumber(data.card_number);
     newData["card_type"] = this.getCardType(data.card_number);
     newData["cvv"] = data.cvv;
     newData["card_exp_date"] = data.exp_month + "/" + data.exp_year.slice(2);
     newData["email"] = data.email;
+    newData["amount"] = data.amount;
+    newData["mobile"] = {
+      mobile_number: this.sanitizePhoneNumber(data.mobile_number),
+    };
 
-    return { isCardValid, errorFields, newData: isCardValid ? newData : "" };
+    return {
+      isCardValid,
+      errorFields,
+      newData: isCardValid ? { data: newData } : "",
+    };
   }
 }
 
