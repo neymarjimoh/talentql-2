@@ -99,6 +99,10 @@ class Utils {
       isCardNumberValid = false;
       invalidCardNumberMessage.push("card_number is required");
     }
+    if (!/^[0-9]*$/.test(card_number)) {
+      isCardNumberValid = false;
+      invalidCardNumberMessage.push("card number can only accept numbers");
+    }
     if (card_number.length < 12) {
       isCardNumberValid = false;
       invalidCardNumberMessage.push(
