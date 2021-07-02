@@ -1,4 +1,4 @@
-const card_types = require("./card_type");
+const card_types = require("../card_type");
 
 class Utils {
   constructor(req) {
